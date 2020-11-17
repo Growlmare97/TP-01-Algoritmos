@@ -118,8 +118,18 @@ barcos_jugador_1 = []
 barcos_jugador_2 = []
 
 ##############################################
-#                   BACK                     #
+#              IMPLEMENTACIÓN                #
 ##############################################
+
+def menu(tipo, jugador_1_ = None, jugador_2_ = None):
+  if tipo == MENU_INICIO:
+    print(mensaje_bienvenida)
+    return validar_data(menu_inicio, int, 1, 2)
+  elif tipo == MENU_JUEGO_TERMINADO:
+    winner = jugador_1_[NOMBRE] if jugador_1_[GANADOR] else jugador_2_[NOMBRE]
+    print(juego_finalizado)
+    print('\n¡GANÓ {0}!\n\n'.format(winner))
+    return FINALIZAR
 
 def validar_data(mensaje_usuario, tipo_=None, min_=None, max_=None, lista_=None, dimension_tablero_=None):
   if min_ is not None and max_ is not None and max_ < min_:
@@ -151,22 +161,30 @@ def validar_data(mensaje_usuario, tipo_=None, min_=None, max_=None, lista_=None,
 def traducir_numero_fila(numero):
   return abecedario[numero]
 
-def ubicar_barcos_horizontales(dimension_tablero, jugador):
-  indice_maximo = len(jugador[BARCOS][HORIZONTAL])
-  for barco, indice_barco in zip(jugador[BARCOS][HORIZONTAL], range(indice_maximo)):
-    fila, columna = [], []
-    fila, columna, jugador[TABLERO] = ubicar_barco(jugador[TABLERO], dimension_tablero, fila, columna, barco, HORIZONTAL)
-    for x,y in zip(fila, columna):
-      jugador[POSICIONES_BARCOS][indice_barco].append(x+str(y))
+def generar_tablero(tablero, dimension_tablero):
+  for i in range(dimension_tablero):
+    fila = []
+    for j in range(dimension_tablero):
+      fila.append('~')
+    tablero.append(fila)
+  return tablero
 
-def ubicar_barcos_verticales(dimension_tablero, jugador):
-  indice_minimo = len(jugador[BARCOS][HORIZONTAL])
-  indice_maximo = len(jugador[BARCOS][HORIZONTAL] + jugador[BARCOS][VERTICAL])
-  for barco, indice_barco in zip(jugador[BARCOS][VERTICAL], range(indice_minimo, indice_maximo)):
-    fila, columna = [], []
-    fila, columna, jugador[TABLERO] = ubicar_barco(jugador[TABLERO], dimension_tablero, fila, columna, barco, VERTICAL)
-    for x,y in zip(fila, columna):
-      jugador[POSICIONES_BARCOS][indice_barco].append(x+str(y))
+def imprimir_tablero(tablero, dimension_tablero):
+  for columna in range(dimension_tablero):
+      print('\t' if columna == 0 else '', columna + 1, end='\t')
+  print()
+  for fila in range(dimension_tablero):
+    print(' ', abecedario[fila], end= '\t')
+    print('\t'.join(tablero[fila]), end='\n')
+
+def orientacion_barco(barcos, indice):
+  if indice >= 0:
+    if indice < len(barcos[HORIZONTAL]):
+      return HORIZONTAL
+    elif indice > len(barcos[HORIZONTAL]) and indice < len(barcos[HORIZONTAL])+len(barcos[VERTICAL]):
+      return VERTICAL
+  else:
+    return -1
 
 def hay_barcos(tablero, dimension_barco, orientacion, fila, columna):
   w = h = 0
@@ -206,52 +224,105 @@ def ubicar_barco(tablero, dimension_tablero, fila, columna, dimension_barco, ori
     columna.append(y+w+1)
   return fila, columna, tablero
 
+def ubicar_barcos_horizontales(dimension_tablero, jugador):
+  indice_maximo = len(jugador[BARCOS][HORIZONTAL])
+  for barco, indice_barco in zip(jugador[BARCOS][HORIZONTAL], range(indice_maximo)):
+    fila, columna = [], []
+    fila, columna, jugador[TABLERO] = ubicar_barco(jugador[TABLERO], dimension_tablero, fila, columna, barco, HORIZONTAL)
+    for x,y in zip(fila, columna):
+      jugador[POSICIONES_BARCOS][indice_barco].append(x+str(y))
+
+def ubicar_barcos_verticales(dimension_tablero, jugador):
+  indice_minimo = len(jugador[BARCOS][HORIZONTAL])
+  indice_maximo = len(jugador[BARCOS][HORIZONTAL] + jugador[BARCOS][VERTICAL])
+  for barco, indice_barco in zip(jugador[BARCOS][VERTICAL], range(indice_minimo, indice_maximo)):
+    fila, columna = [], []
+    fila, columna, jugador[TABLERO] = ubicar_barco(jugador[TABLERO], dimension_tablero, fila, columna, barco, VERTICAL)
+    for x,y in zip(fila, columna):
+      jugador[POSICIONES_BARCOS][indice_barco].append(x+str(y))
+
 def ubicar_barcos(dimension_tablero, jugador):
   ubicar_barcos_horizontales(dimension_tablero, jugador)
   ubicar_barcos_verticales(dimension_tablero, jugador)
 
-def generar_tablero(tablero, dimension_tablero):
-  for i in range(dimension_tablero):
-    fila = []
-    for j in range(dimension_tablero):
-      fila.append('~')
-    tablero.append(fila)
-  return tablero
+def atacar_barco(atacante, oponente, posiciones, contador, coordenada, fila, columna):
+  coordenada_encontrada = False
+  for indice_barco in range(len(oponente[posiciones])):
+    if not coordenada_encontrada:
+      for i in range(len(oponente[posiciones][indice_barco])):
+        if oponente[posiciones][indice_barco][i] == coordenada:
+          del oponente[posiciones][indice_barco][i]
+          if contador == BARCOS_ROBADOS_DISPONIBLES:
+            orientacion = orientacion_barco(oponente[BARCOS], indice_barco)
+            oponente[contador][indice_barco]-=1
+          elif contador == BARCOS_DISPONIBLES:
+            oponente[contador][indice_barco]-=1
+          orientacion = orientacion_barco(oponente[BARCOS], indice_barco)
+          if orientacion != -1:
+            imprimir_barco_atacado(oponente, atacante[NOMBRE], indice_barco, orientacion)
+            oponente[TABLERO][fila][columna] = 'X'
+            atacante[TABLERO_ATAQUES][fila][columna] = 'O'
+            coordenada_encontrada = True
+            break
+          else:
+            print("No se encontró el barco")
+    else:
+      break
+  return coordenada_encontrada, oponente, atacante
 
-def configurar_partida(jugador_1, jugador_2, tablero, dimension_tablero):
-  print('\n\nVamo´ a jugá')
-  jugador_1[NOMBRE] = validar_data("\nNombre Jugador 1: ", str)
-  jugador_2[NOMBRE] = validar_data("\nNombre Jugador 2: ", str)
-  print('\n\n¡Elegí tu jugador!\n')
-  jugador_1[PERSONAJE] = validar_data("1) Sandokan y sus amigos\n2) Armada británica\n\n", int, SANDOKAN, ARMADA)
-  jugador_2[PERSONAJE] = ARMADA if jugador_1[PERSONAJE] == SANDOKAN else SANDOKAN
-  dimension_tablero = validar_data("\n\nIngresá el tamaño del tablero (entre 10 y 24): ", int, DIMENSION_TABLERO_MIN, DIMENSION_TABLERO_MAX)
-  porcentaje_exito_partida_especial = validar_data("\n\nPorcentaje de probabilidad de ganar un defensa del oponente en una Partida Especial: ", int, 0, 100)
-  tablero = generar_tablero(tablero, dimension_tablero)
-  return jugador_1, jugador_2, tablero, dimension_tablero
+def atacar_oponente(atacante, oponente, coordenada, repetida):
+  fila = abecedario.index(coordenada[FILA])
+  columna = int(coordenada[1:])-1
+  repetida = False
+  if oponente[TABLERO][fila][columna] == '0':
+    barco_encontrado, oponente, atacante = atacar_barco(atacante, oponente, POSICIONES_BARCOS, BARCOS_DISPONIBLES, coordenada, fila, columna)
+    if not barco_encontrado:
+      barco_encontrado, oponente, atacante = atacar_barco(atacante, oponente, BARCOS_ROBADOS, BARCOS_ROBADOS_DISPONIBLES, coordenada, fila, columna)
+  elif oponente[TABLERO][fila][columna] == 'x' or oponente[TABLERO][fila][columna] == 'X':
+    repetida = True
+    print('\n\n¡Ya atacaste esa coordenada!\n')
+  else:
+    oponente[TABLERO][fila][columna] = 'x'
+    atacante[TABLERO_ATAQUES][fila][columna] = 'o'
+    print(mensaje_agua)
+  oponente_sin_barcos = all(barco_disponible == 0 for barco_disponible in oponente[BARCOS_DISPONIBLES])
+  oponente_sin_barcos_robados = all(barco_disponible == 0 for barco_disponible in oponente[BARCOS_ROBADOS_DISPONIBLES])
+  atacante[GANADOR] = oponente_sin_barcos and oponente_sin_barcos_robados
+  return atacante, oponente, repetida
 
-def setear_jugadores(tablero, dimension_tablero, jugador, barcos, contador_barcos):
-  jugador[TABLERO] = copy.deepcopy(tablero)
-  jugador[TABLERO_ATAQUES] = copy.deepcopy(tablero)
-  jugador[BARCOS] = barcos
-  jugador[BARCOS_DISPONIBLES] = contador_barcos
-  jugador[POSICIONES_BARCOS] = [[] for i in range(CANTIDAD_BARCOS)]
-  ubicar_barcos(dimension_tablero, jugador)
-  jugador[BARCOS_ROBADOS] = [[] for i in range(BARCOS_ROBADOS)]
-  jugador[GANADOR] = False
-  return jugador
+def indices_barcos_disponibles(personaje, barcos_jugador, dimension_tablero):
+  barcos_disponibles = [dimension_tablero]*len(barcos_jugador)
+  for barco, indice in zip(barcos_jugador, range(len(barcos_jugador))):
+    if barco != 0:
+      dim_barco = 0
+      dim_barco = dimension_barco(personaje, indice)
+      barcos_disponibles[indice] = dim_barco
+  return barcos_disponibles
 
-##############################################
-#                   FRONT                    #
-##############################################
-
-def imprimir_tablero(tablero, dimension_tablero):
-  for columna in range(dimension_tablero):
-      print('\t' if columna == 0 else '', columna + 1, end='\t')
-  print()
-  for fila in range(dimension_tablero):
-    print(' ', abecedario[fila], end= '\t')
-    print('\t'.join(tablero[fila]), end='\n')
+def robar_defensa(atacante, oponente, dimension_tablero):
+  barcos_disponibles = indices_barcos_disponibles(oponente[PERSONAJE], oponente[BARCOS_DISPONIBLES], dimension_tablero)
+  dimension_barco_min = min(barcos_disponibles)
+  indice = barcos_disponibles.index(dimension_barco_min)
+  orientacion = orientacion_barco(oponente[BARCOS], indice)
+  fila, columna = [], []
+  fila, columna, atacante[TABLERO] = ubicar_barco(atacante[TABLERO], dimension_tablero, fila, columna, dimension_barco_min, orientacion)
+  for x,y in zip(fila, columna):
+    atacante[BARCOS_ROBADOS][indice].append(x+str(y))
+  imprimir_barco_atacado(oponente, atacante[NOMBRE], indice, orientacion, True)
+  for posicion in oponente[POSICIONES_BARCOS][indice]:
+    x = abecedario.index(posicion[FILA])
+    y = int(posicion[1:])-1
+    oponente[TABLERO][x][y] = 'X'
+  oponente[BARCOS_DISPONIBLES][indice] = 0
+  personaje = oponente[PERSONAJE]
+  atacante[BARCOS_ROBADOS_DISPONIBLES][indice] = dimension_barco_min
+  no_tiene_barcos_robados = True
+  for barco_robado in oponente[BARCOS_ROBADOS_DISPONIBLES]:
+    if barco_robado != 0:
+      no_tiene_barcos_robados = False
+      break
+  atacante[GANADOR] = all(barco_disponible == 0 for barco_disponible in oponente[BARCOS_DISPONIBLES]) and no_tiene_barcos_robados
+  return atacante, oponente
 
 def imprimir_barco_atacado(jugador, nombre_atacante, indice_barco, orientacion, robando_barco_ = False):
   if jugador[PERSONAJE] == SANDOKAN:
@@ -289,65 +360,6 @@ def imprimir_barco_atacado(jugador, nombre_atacante, indice_barco, orientacion, 
   else:
     print("¡{0} se ROBÓ un{1} {2}!".format(nombre_atacante, adjetivo_femenino, barco_str))
 
-def orientacion_barco(barcos, indice):
-  if indice >= 0:
-    if indice < len(barcos[HORIZONTAL]):
-      return HORIZONTAL
-    elif indice > len(barcos[HORIZONTAL]) and indice < len(barcos[HORIZONTAL])+len(barcos[VERTICAL]):
-      return VERTICAL
-  else:
-    return -1
-
-def atacar_barco(atacante, oponente, posiciones, contador, coordenada, fila, columna):
-  coordenada_encontrada = False
-  for indice_barco in range(len(oponente[posiciones])):
-    if not coordenada_encontrada:
-      for i in range(len(oponente[posiciones][indice_barco])):
-        if oponente[posiciones][indice_barco][i] == coordenada:
-          del oponente[posiciones][indice_barco][i]
-          if contador == BARCOS_ROBADOS_DISPONIBLES:
-            orientacion = orientacion_barco(oponente[BARCOS], indice_barco)
-            oponente[contador][indice_barco]-=1
-          elif contador == BARCOS_DISPONIBLES:
-            oponente[contador][indice_barco]-=1
-          orientacion = orientacion_barco(oponente[BARCOS], indice_barco)
-          if orientacion != -1:
-            imprimir_barco_atacado(oponente, atacante[NOMBRE], indice_barco, orientacion)
-            oponente[TABLERO][fila][columna] = 'X'
-            atacante[TABLERO_ATAQUES][fila][columna] = 'O'
-            coordenada_encontrada = True
-            break
-          else:
-            print("No se encontró el barco")
-    else:
-      break
-  print("BCOS DISP: ", oponente[BARCOS_DISPONIBLES])
-  print("BCOS robados DISP: ", oponente[BARCOS_ROBADOS_DISPONIBLES])
-  return coordenada_encontrada, oponente, atacante
-
-def atacar(atacante, oponente, coordenada, repetida):
-  fila = abecedario.index(coordenada[FILA])
-  columna = int(coordenada[1:])-1
-  repetida = False
-  if oponente[TABLERO][fila][columna] == '0':
-    barco_encontrado, oponente, atacante = atacar_barco(atacante, oponente, POSICIONES_BARCOS, BARCOS_DISPONIBLES, coordenada, fila, columna)
-    if not barco_encontrado:
-      barco_encontrado, oponente, atacante = atacar_barco(atacante, oponente, BARCOS_ROBADOS, BARCOS_ROBADOS_DISPONIBLES, coordenada, fila, columna)
-  elif oponente[TABLERO][fila][columna] == 'x' or oponente[TABLERO][fila][columna] == 'X':
-    repetida = True
-    print('\n\n¡Ya atacaste esa coordenada!\n')
-  else:
-    oponente[TABLERO][fila][columna] = 'x'
-    atacante[TABLERO_ATAQUES][fila][columna] = 'o'
-    print(mensaje_agua)
-  no_tiene_barcos_robados = True
-  for barco_robado in oponente[BARCOS_ROBADOS_DISPONIBLES]:
-    if barco_robado != 0:
-      no_tiene_barcos_robados = False
-      break
-  atacante[GANADOR] = all(barco_disponible == 0 for barco_disponible in oponente[BARCOS_DISPONIBLES]) and no_tiene_barcos_robados
-  return atacante, oponente, repetida
-
 def dimension_barco(personaje, barco):
   if personaje == SANDOKAN:
     if barco == FUERTE:
@@ -372,40 +384,6 @@ def dimension_barco(personaje, barco):
     elif barco == BARCAZA:
       return DIM_BARCAZA 
 
-def indices_barcos_disponibles(personaje, barcos_jugador, dimension_tablero):
-  barcos_disponibles = [dimension_tablero]*len(barcos_jugador)
-  for barco, indice in zip(barcos_jugador, range(len(barcos_jugador))):
-    if barco != 0:
-      dim_barco = 0
-      dim_barco = dimension_barco(personaje, indice)
-      barcos_disponibles[indice] = dim_barco
-  return barcos_disponibles
-
-def robar_defensa(atacante, oponente, dimension_tablero):
-  barcos_disponibles = indices_barcos_disponibles(oponente[PERSONAJE], oponente[BARCOS_DISPONIBLES], dimension_tablero)
-  dimension_barco_min = min(barcos_disponibles)
-  indice = barcos_disponibles.index(dimension_barco_min)
-  orientacion = orientacion_barco(oponente[BARCOS], indice)
-  fila, columna = [], []
-  fila, columna, atacante[TABLERO] = ubicar_barco(atacante[TABLERO], dimension_tablero, fila, columna, dimension_barco_min, orientacion)
-  for x,y in zip(fila, columna):
-    atacante[BARCOS_ROBADOS][indice].append(x+str(y))
-  imprimir_barco_atacado(oponente, atacante[NOMBRE], indice, orientacion, True)
-  for posicion in oponente[POSICIONES_BARCOS][indice]:
-    x = abecedario.index(posicion[FILA])
-    y = int(posicion[1:])-1
-    oponente[TABLERO][x][y] = 'X'
-  oponente[BARCOS_DISPONIBLES][indice] = 0
-  personaje = oponente[PERSONAJE]
-  atacante[BARCOS_ROBADOS_DISPONIBLES][indice] = dimension_barco_min
-  no_tiene_barcos_robados = True
-  for barco_robado in oponente[BARCOS_ROBADOS_DISPONIBLES]:
-    if barco_robado != 0:
-      no_tiene_barcos_robados = False
-      break
-  atacante[GANADOR] = all(barco_disponible == 0 for barco_disponible in oponente[BARCOS_DISPONIBLES]) and no_tiene_barcos_robados
-  return atacante, oponente
-
 def setear_barcos():
   for barco in barcos_horizontales_sandokan:
     barcos_sandokan[HORIZONTAL].append(barco)
@@ -415,6 +393,29 @@ def setear_barcos():
     barcos_armada[HORIZONTAL].append(barco)
   for barco in barcos_verticales_armada:
     barcos_armada[VERTICAL].append(barco)
+
+def setear_jugadores(tablero, dimension_tablero, jugador, barcos, contador_barcos):
+  jugador[TABLERO] = copy.deepcopy(tablero)
+  jugador[TABLERO_ATAQUES] = copy.deepcopy(tablero)
+  jugador[BARCOS] = barcos
+  jugador[BARCOS_DISPONIBLES] = contador_barcos
+  jugador[POSICIONES_BARCOS] = [[] for i in range(CANTIDAD_BARCOS)]
+  ubicar_barcos(dimension_tablero, jugador)
+  jugador[BARCOS_ROBADOS] = [[] for i in range(BARCOS_ROBADOS)]
+  jugador[GANADOR] = False
+  return jugador
+
+def configurar_partida(jugador_1, jugador_2, tablero, dimension_tablero):
+  print('\n\nVamo´ a jugá')
+  jugador_1[NOMBRE] = validar_data("\nNombre Jugador 1: ", str)
+  jugador_2[NOMBRE] = validar_data("\nNombre Jugador 2: ", str)
+  print('\n\n¡Elegí tu jugador!\n')
+  jugador_1[PERSONAJE] = validar_data("1) Sandokan y sus amigos\n2) Armada británica\n\n", int, SANDOKAN, ARMADA)
+  jugador_2[PERSONAJE] = ARMADA if jugador_1[PERSONAJE] == SANDOKAN else SANDOKAN
+  dimension_tablero = validar_data("\n\nIngresá el tamaño del tablero (entre 10 y 24): ", int, DIMENSION_TABLERO_MIN, DIMENSION_TABLERO_MAX)
+  porcentaje_exito_partida_especial = validar_data("\n\nPorcentaje de probabilidad de ganar un defensa del oponente en una Partida Especial: ", int, 0, 100)
+  tablero = generar_tablero(tablero, dimension_tablero)
+  return jugador_1, jugador_2, tablero, dimension_tablero
 
 def jugar(tablero, dimension_tablero, jugador_1, jugador_2):
   setear_barcos()
@@ -436,12 +437,12 @@ def jugar(tablero, dimension_tablero, jugador_1, jugador_2):
         print("\n\n¡Turno para SANDOKAN Y SUS AMIGOS!\n")
       else:
         print("\n\n¡Turno de las FUERZAS BRITÁNICAS!\n")
-      imprimir_tablero(jugador_2[TABLERO_ATAQUES], dimension_tablero)
+      imprimir_tablero(jugador_1[TABLERO_ATAQUES], dimension_tablero)
       print()
-      imprimir_tablero(jugador_2[TABLERO], dimension_tablero)
+      imprimir_tablero(jugador_1[TABLERO], dimension_tablero)
       while coordenada_repetida:
         coordenada_de_ataque = validar_data("\n\nIngrese coordenada a atacar: ", str, None, None, abecedario, dimension_tablero)
-        jugador_1, jugador_2, coordenada_repetida = atacar(jugador_1, jugador_2, coordenada_de_ataque, coordenada_repetida)
+        jugador_1, jugador_2, coordenada_repetida = atacar_oponente(jugador_1, jugador_2, coordenada_de_ataque, coordenada_repetida)
       if partida_especial:
         jugador_1, jugador_2 = robar_defensa(jugador_1, jugador_2, dimension_tablero)
     else:
@@ -449,32 +450,18 @@ def jugar(tablero, dimension_tablero, jugador_1, jugador_2):
         print("\n\n¡Turno para SANDOKAN Y SUS AMIGOS!\n")
       else:
         print("\n\n¡Turno de las FUERZAS BRITÁNICAS!\n")
-      imprimir_tablero(jugador_1[TABLERO_ATAQUES], dimension_tablero)
+      imprimir_tablero(jugador_2[TABLERO_ATAQUES], dimension_tablero)
       print()
-      imprimir_tablero(jugador_1[TABLERO], dimension_tablero)
+      imprimir_tablero(jugador_2[TABLERO], dimension_tablero)
       while coordenada_repetida:
         coordenada_de_ataque = validar_data("\nIngrese coordenada a atacar: ", str, None, None, abecedario, dimension_tablero)
-        jugador_2, jugador_1, coordenada_repetida = atacar(jugador_2, jugador_1, coordenada_de_ataque, coordenada_repetida)
+        jugador_2, jugador_1, coordenada_repetida = atacar_oponente(jugador_2, jugador_1, coordenada_de_ataque, coordenada_repetida)
       if partida_especial:
         jugador_2, jugador_1 = robar_defensa(jugador_2, jugador_1, dimension_tablero)
     if jugador_1[GANADOR] or jugador_2[GANADOR]:
       break
   resp = menu(MENU_JUEGO_TERMINADO, jugador_1, jugador_2)
   return resp
-
-def menu(tipo, jugador_1_ = None, jugador_2_ = None):
-  if tipo == MENU_INICIO:
-    print(mensaje_bienvenida)
-    return validar_data(menu_inicio, int, 1, 2)
-  elif tipo == MENU_JUEGO_TERMINADO:
-    winner = jugador_1_[NOMBRE] if jugador_1_[GANADOR] else jugador_2_[NOMBRE]
-    print(juego_finalizado)
-    print('\n¡GANÓ {0}!\n\n'.format(winner))
-    return FINALIZAR
-
-##############################################
-#                MAIN PROGRAM                #
-##############################################
 
 def main():
   resp = menu(MENU_INICIO)
