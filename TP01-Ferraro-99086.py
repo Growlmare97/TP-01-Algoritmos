@@ -149,7 +149,11 @@ def validar_data(mensaje_usuario, tipo_=None, min_=None, max_=None, lista_=None,
       except ValueError:
         print("Valor fuera de rango. Por favor, ingresarlo nuevamente.\n")
         continue
-      numero = int(usr_input[1:])
+      try:
+        numero = int(usr_input[1:])
+      except ValueError:
+        print("Coordenada errónea. Por favor, ingrésela nuevamente.\n")
+        continue
       if numero < 1 or numero > dimension_tablero_:
         print("Valor fuera de rango. Por favor, ingresarlo nuevamente.\n")
         continue
