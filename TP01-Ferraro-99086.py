@@ -56,7 +56,6 @@ HORIZONTAL = 0
 VERTICAL = 1
 
 abecedario =["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"]
-porcentaje_exito_partida_especial = 30
 lista_booleana = [True, False]
 
 ##############################################
@@ -131,11 +130,14 @@ def menu(tipo, jugador_1_ = None, jugador_2_ = None):
     print('\n¡GANÓ {0}!\n\n'.format(winner))
     return FINALIZAR
 
-def validar_data(mensaje_usuario, tipo_=None, min_=None, max_=None, lista_=None, dimension_tablero_=None):
+def validar_data(mensaje_usuario, tipo_=None, min_=None, max_=None, lista_=None, dimension_tablero_=None, valor_por_defecto_=None):
   if min_ is not None and max_ is not None and max_ < min_:
     raise ValueError("Backend Error: Wrong parameter values\n")
   while True:
     usr_input = input(mensaje_usuario)
+    if valor_por_defecto_ is not None:
+      if usr_input == '':
+        return valor_por_defecto_
     if tipo_ is not None:
       try:
         data = tipo_(usr_input)
@@ -417,11 +419,11 @@ def configurar_partida(jugador_1, jugador_2, tablero, dimension_tablero):
   jugador_1[PERSONAJE] = validar_data("1) Sandokan y sus amigos\n2) Armada británica\n\n", int, SANDOKAN, ARMADA)
   jugador_2[PERSONAJE] = ARMADA if jugador_1[PERSONAJE] == SANDOKAN else SANDOKAN
   dimension_tablero = validar_data("\n\nIngresá el tamaño del tablero (entre 10 y 24): ", int, DIMENSION_TABLERO_MIN, DIMENSION_TABLERO_MAX)
-  porcentaje_exito_partida_especial = validar_data("\n\nPorcentaje de probabilidad de ganar un defensa del oponente en una Partida Especial: ", int, 0, 100)
+  porcentaje_exito_partida_especial = validar_data("\n\nPorcentaje de probabilidad de ganar un defensa del oponente en una Partida Especial: ", int, 0, 100, None, None, 30)
   tablero = generar_tablero(tablero, dimension_tablero)
-  return jugador_1, jugador_2, tablero, dimension_tablero
+  return jugador_1, jugador_2, tablero, dimension_tablero, porcentaje_exito_partida_especial
 
-def jugar(tablero, dimension_tablero, jugador_1, jugador_2):
+def jugar(tablero, dimension_tablero, jugador_1, jugador_2, porcentaje_exito_partida_especial):
   setear_barcos()
   contador_barcos_sandokan = barcos_horizontales_sandokan + barcos_verticales_sandokan
   contador_barcos_armada = barcos_horizontales_armada + barcos_verticales_armada
@@ -475,8 +477,8 @@ def main():
       tablero = []
       jugador_1 = ['', 0, []*dimension_tablero, []*dimension_tablero, []*CANTIDAD_BARCOS, []*CANTIDAD_BARCOS, []*CANTIDAD_BARCOS, []*CANTIDAD_BARCOS, [0]*CANTIDAD_BARCOS, False]
       jugador_2 = ['', 0, []*dimension_tablero, []*dimension_tablero, []*CANTIDAD_BARCOS, []*CANTIDAD_BARCOS, []*CANTIDAD_BARCOS, []*CANTIDAD_BARCOS, [0]*CANTIDAD_BARCOS, False]
-      jugador_1, jugador_2, tablero, dimension_tablero = configurar_partida(jugador_1, jugador_2, tablero, dimension_tablero)
-      resp = jugar(tablero, dimension_tablero, jugador_1, jugador_2)
+      jugador_1, jugador_2, tablero, dimension_tablero, porcentaje_exito_partida_especial = configurar_partida(jugador_1, jugador_2, tablero, dimension_tablero)
+      resp = jugar(tablero, dimension_tablero, jugador_1, jugador_2, porcentaje_exito_partida_especial)
       continue
     if resp == FINALIZAR:
       quit()
